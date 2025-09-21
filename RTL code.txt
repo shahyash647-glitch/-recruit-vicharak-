@@ -1,0 +1,246 @@
+module ProgramCounter (
+    input clk, reset,
+    input Jump, Branch, Call, Ret,
+    input [15:0] target_addr,    // Jump/Branch target
+    input [15:0] ret_addr,       // Returned from stack
+    output reg [15:0] pc_out
+);
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            pc_out <= 16'b0;               // Reset to 0
+        else if (Jump)
+            pc_out <= target_addr;         // Jump
+        else if (Branch)
+            pc_out <= target_addr;         // Branch
+        else if (Ret)
+            pc_out <= ret_addr;            // Return from stack
+        else
+            pc_out <= pc_out + 1;          // Normal increment
+    end
+endmodule
+
+
+// ==========================
+// Instruction Memory (IM)
+// ==========================
+module InstructionMemory (
+    input [15:0] addr,
+    output reg [18:0] instruction
+);
+    reg [18:0] mem [0:255]; // 256 instructions max
+
+   
+  
+initial begin
+    // -----------------------
+    // Arithmetic Operations
+    // -----------------------
+    mem[0]  = 19'b00000_0001_0010_0011_00; // ADD  r1 = r2 + r3
+    mem[1]  = 19'b00001_0100_0001_0011_00; // SUB  r4 = r1 - r3
+    mem[2]  = 19'b00010_0101_0010_0011_00; // MUL  r5 = r2 * r3
+    mem[3]  = 19'b00011_0110_0101_0011_00; // DIV  r6 = r5 / r3
+    mem[4]  = 19'b00101_0111_0110_0000_00; // INC  r7 = r6 + 1
+    mem[5]  = 19'b00110_1000_0111_0000_00; // DEC  r8 = r7 - 1
+
+    // -----------------------
+    // Logic Operations
+    // -----------------------
+    mem[6]  = 19'b01000_1001_0010_0011_00; // AND  r9  = r2 & r3
+    mem[7]  = 19'b01001_1010_0010_0011_00; // OR   r10 = r2 | r3
+    mem[8]  = 19'b01010_1011_0010_0011_00; // XOR  r11 = r2 ^ r3
+    mem[9]  = 19'b01011_1100_0010_0000_00; // NOT  r12 = ~r2   
+end
+
+
+   
+
+    always @(*) begin
+        instruction = mem[addr];
+    end
+endmodule
+
+
+// ==========================
+// Decoder + Control Unit
+// ==========================
+module DecoderControl (
+    input [18:0] instruction,
+    output reg [3:0] rd, rs1, rs2,
+    output reg [15:0] imm,
+    output reg [3:0] ALUOp,
+    output reg RegWrite, MemRead, MemWrite,
+    output reg Branch, Jump, Call, Ret
+);
+    wire [4:0] opcode = instruction[18:14];
+
+    always @(*) begin
+        // Extract fields
+        rd  = instruction[13:10];
+        rs1 = instruction[9:6];
+        rs2 = instruction[5:2];
+        imm = {12'b0, instruction[3:0]};
+
+        // Default signals
+        RegWrite = 0; MemRead = 0; MemWrite = 0;
+        Branch = 0; Jump = 0; Call = 0; Ret = 0;
+        ALUOp = 4'b0000;
+
+        case (opcode)
+            5'b00000: begin ALUOp=4'b0000; RegWrite=1; end // ADD
+            5'b00001: begin ALUOp=4'b0001; RegWrite=1; end // SUB
+            5'b00010: begin ALUOp=4'b0010; RegWrite=1; end // MUL
+            5'b00011: begin ALUOp=4'b0011; RegWrite=1; end // DIV
+            5'b00101: begin ALUOp=4'b0100; RegWrite=1; end // INC
+            5'b00110: begin ALUOp=4'b0101; RegWrite=1; end // DEC
+            5'b01000: begin ALUOp=4'b0110; RegWrite=1; end // AND
+            5'b01001: begin ALUOp=4'b0111; RegWrite=1; end // OR
+            5'b01010: begin ALUOp=4'b1000; RegWrite=1; end // XOR
+            5'b01011: begin ALUOp=4'b1001; RegWrite=1; end // NOT
+            default: ; // NOP
+        endcase
+    end
+endmodule
+
+
+// ==========================
+// Register File (16x16)
+// ==========================
+module RegisterFile (
+    input clk,
+    input [3:0] read_reg1, read_reg2, write_reg,
+    input [15:0] write_data,
+    input reg_write,
+    output reg [15:0] read_data1, read_data2
+);
+    reg [15:0] reg_mem [0:15];
+
+    initial begin
+     
+        reg_mem[0] = 16'd0;   // r0 usually hardwired to 0
+        reg_mem[1] = 16'd10;  // r1 = 10
+        reg_mem[2] = 16'd20;  // r2 = 20
+        reg_mem[3] = 16'd30;  // r3 = 30
+        reg_mem[4] = 16'd40;  // r4 = 40
+        reg_mem[5] = 16'd50;  // r5 = 50
+        // You can set the rest to 0
+        reg_mem[6] = 16'd0;
+        reg_mem[7] = 16'd0;
+        reg_mem[8] = 16'd0;
+        reg_mem[9] = 16'd0;
+        reg_mem[10] = 16'd0;
+        reg_mem[11] = 16'd0;
+        reg_mem[12] = 16'd0;
+        reg_mem[13] = 16'd0;
+        reg_mem[14] = 16'd0;
+        reg_mem[15] = 16'd0;
+    end
+
+    always @(posedge clk) begin
+        if (reg_write) reg_mem[write_reg] <= write_data;
+    end
+    always @(*) begin
+        read_data1 = reg_mem[read_reg1];
+        read_data2 = reg_mem[read_reg2];
+    end
+endmodule
+
+
+// ==========================
+// Data Memory
+// ==========================
+module DataMemory (
+    input clk,
+    input MemRead, MemWrite,
+    input [15:0] addr,
+    input [15:0] write_data,
+    output reg [15:0] read_data
+);
+    reg [15:0] mem [0:255];
+
+    // Initialize entire memory with 0
+    integer i;
+    initial begin
+        for (i = 0; i < 256; i = i + 1) begin
+            mem[i] = 16'd0;
+        end
+    end
+
+    always @(posedge clk) begin
+        if (MemWrite) mem[addr] <= write_data;
+    end
+    always @(*) begin
+        if (MemRead) read_data = mem[addr];
+    end
+endmodule
+
+
+// ==========================
+// ALU
+// ==========================
+module ALU (
+    input [15:0] a, b,
+    input [3:0] alu_control,
+    output reg [15:0] result
+);
+    always @(*) begin
+        case (alu_control)
+            4'b0000: result = a + b;       // ADD
+            4'b0001: result = a - b;       // SUB
+            4'b0010: result = a * b;       // MUL
+            4'b0011: result = (b!=0)? a/b:16'b0; // DIV
+            4'b0100: result = a + 1;       // INC
+            4'b0101: result = a - 1;       // DEC
+            4'b0110: result = a & b;       // AND
+            4'b0111: result = a | b;       // OR
+            4'b1000: result = a ^ b;       // XOR
+            4'b1001: result = ~a;          // NOT
+            default: result = 16'b0;
+        endcase
+    end
+endmodule
+
+
+// ==========================
+// Top-level CPU
+// ==========================
+module CPU (
+    input clk, reset,
+    output [15:0] pc_out,
+    output [18:0] instruction,
+    output [15:0] alu_result
+);
+    // Wires
+    wire [3:0] rd, rs1, rs2;
+    wire [15:0] imm;
+    wire [3:0] ALUOp;
+    wire RegWrite, MemRead, MemWrite, Branch, Jump, Call, Ret;
+    wire [15:0] reg_data1, reg_data2, mem_data, stack_out;
+
+    // Program Counter
+    ProgramCounter pc(.clk(clk), .reset(reset),
+        .Jump(Jump), .Branch(Branch), .Call(Call), .Ret(Ret),
+        .target_addr(imm), .ret_addr(stack_out),
+        .pc_out(pc_out));
+
+    // Instruction Memory
+    InstructionMemory im(.addr(pc_out), .instruction(instruction));
+
+    // Decoder
+    DecoderControl dc(.instruction(instruction), .rd(rd), .rs1(rs1), .rs2(rs2),
+        .imm(imm), .ALUOp(ALUOp),
+        .RegWrite(RegWrite), .MemRead(MemRead), .MemWrite(MemWrite),
+        .Branch(Branch), .Jump(Jump), .Call(Call), .Ret(Ret));
+
+    // Register File
+    RegisterFile rf(.clk(clk), .read_reg1(rs1), .read_reg2(rs2), .write_reg(rd),
+        .write_data(alu_result), .reg_write(RegWrite),
+        .read_data1(reg_data1), .read_data2(reg_data2));
+
+    // ALU
+    ALU alu(.a(reg_data1), .b(reg_data2), .alu_control(ALUOp), .result(alu_result));
+
+    // Data Memory
+    DataMemory dm(.clk(clk), .MemRead(MemRead), .MemWrite(MemWrite),
+        .addr(imm), .write_data(reg_data2), .read_data(mem_data));
+
+  endmodule
