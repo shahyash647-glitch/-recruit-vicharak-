@@ -1,0 +1,46 @@
+`timescale 1ns/1ps
+module CPU_tb;
+
+    reg clk, reset;
+    wire [15:0] pc_out;
+    wire [18:0] instruction;
+    wire [15:0] alu_result;
+
+    // Instantiate CPU
+    CPU uut (
+        .clk(clk),
+        .reset(reset),
+        .pc_out(pc_out),
+        .instruction(instruction),
+        .alu_result(alu_result)
+    );
+
+    // Clock generation
+    always #5 clk = ~clk;   // 10 ns clock period
+
+    initial begin
+        
+        $dumpfile("cpu_waveform.vcd");   // output VCD file name
+        $dumpvars(0, CPU_tb);            
+
+        // Start simulation
+       
+
+        clk = 0;
+        reset = 1;
+        #10;
+        reset = 0;
+
+        // Run CPU for some cycles
+        #200; 
+
+      
+        $stop;
+    end
+
+    // Monitor values on console
+    initial begin
+        $monitor("Time=%0t | PC=%0d | Instr=%b | ALU Result=%d",
+                 $time, pc_out, instruction, alu_result);
+    end
+endmodule
