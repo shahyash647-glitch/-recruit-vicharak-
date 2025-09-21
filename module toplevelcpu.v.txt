@@ -1,0 +1,44 @@
+// ==========================
+// Top-level CPU
+// ==========================
+module CPU (
+    input clk, reset,
+    output [15:0] pc_out,
+    output [18:0] instruction,
+    output [15:0] alu_result
+);
+    // Wires
+    wire [3:0] rd, rs1, rs2;
+    wire [15:0] imm;
+    wire [3:0] ALUOp;
+    wire RegWrite, MemRead, MemWrite, Branch, Jump, Call, Ret;
+    wire [15:0] reg_data1, reg_data2, mem_data, stack_out;
+
+    // Program Counter
+    ProgramCounter pc(.clk(clk), .reset(reset),
+        .Jump(Jump), .Branch(Branch), .Call(Call), .Ret(Ret),
+        .target_addr(imm), .ret_addr(stack_out),
+        .pc_out(pc_out));
+
+    // Instruction Memory
+    InstructionMemory im(.addr(pc_out), .instruction(instruction));
+
+    // Decoder
+    DecoderControl dc(.instruction(instruction), .rd(rd), .rs1(rs1), .rs2(rs2),
+        .imm(imm), .ALUOp(ALUOp),
+        .RegWrite(RegWrite), .MemRead(MemRead), .MemWrite(MemWrite),
+        .Branch(Branch), .Jump(Jump), .Call(Call), .Ret(Ret));
+
+    // Register File
+    RegisterFile rf(.clk(clk), .read_reg1(rs1), .read_reg2(rs2), .write_reg(rd),
+        .write_data(alu_result), .reg_write(RegWrite),
+        .read_data1(reg_data1), .read_data2(reg_data2));
+
+    // ALU
+    ALU alu(.a(reg_data1), .b(reg_data2), .alu_control(ALUOp), .result(alu_result));
+
+    // Data Memory
+    DataMemory dm(.clk(clk), .MemRead(MemRead), .MemWrite(MemWrite),
+        .addr(imm), .write_data(reg_data2), .read_data(mem_data));
+
+  endmodule

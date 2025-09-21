@@ -1,0 +1,38 @@
+// ==========================
+// Instruction Memory (IM)
+// ==========================
+module InstructionMemory (
+    input [15:0] addr,
+    output reg [18:0] instruction
+);
+    reg [18:0] mem [0:255]; // 256 instructions max
+
+   
+  
+initial begin
+    // -----------------------
+    // Arithmetic Operations
+    // -----------------------
+    mem[0]  = 19'b00000_0001_0010_0011_00; // ADD  r1 = r2 + r3
+    mem[1]  = 19'b00001_0100_0001_0011_00; // SUB  r4 = r1 - r3
+    mem[2]  = 19'b00010_0101_0010_0011_00; // MUL  r5 = r2 * r3
+    mem[3]  = 19'b00011_0110_0101_0011_00; // DIV  r6 = r5 / r3
+    mem[4]  = 19'b00101_0111_0110_0000_00; // INC  r7 = r6 + 1
+    mem[5]  = 19'b00110_1000_0111_0000_00; // DEC  r8 = r7 - 1
+
+    // -----------------------
+    // Logic Operations
+    // -----------------------
+    mem[6]  = 19'b01000_1001_0010_0011_00; // AND  r9  = r2 & r3
+    mem[7]  = 19'b01001_1010_0010_0011_00; // OR   r10 = r2 | r3
+    mem[8]  = 19'b01010_1011_0010_0011_00; // XOR  r11 = r2 ^ r3
+    mem[9]  = 19'b01011_1100_0010_0000_00; // NOT  r12 = ~r2   
+end
+
+
+   
+ always @(*) begin
+        instruction = mem[addr];
+    end
+endmodule
+

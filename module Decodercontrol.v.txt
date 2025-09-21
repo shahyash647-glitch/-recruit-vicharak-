@@ -1,0 +1,41 @@
+// ==========================
+// Decoder + Control Unit
+// ==========================
+module DecoderControl (
+    input [18:0] instruction,
+    output reg [3:0] rd, rs1, rs2,
+    output reg [15:0] imm,
+    output reg [3:0] ALUOp,
+    output reg RegWrite, MemRead, MemWrite,
+    output reg Branch, Jump, Call, Ret
+);
+    wire [4:0] opcode = instruction[18:14];
+
+    always @(*) begin
+        // Extract fields
+        rd  = instruction[13:10];
+        rs1 = instruction[9:6];
+        rs2 = instruction[5:2];
+        imm = {12'b0, instruction[3:0]};
+
+        // Default signals
+        RegWrite = 0; MemRead = 0; MemWrite = 0;
+        Branch = 0; Jump = 0; Call = 0; Ret = 0;
+        ALUOp = 4'b0000;
+
+        case (opcode)
+            5'b00000: begin ALUOp=4'b0000; RegWrite=1; end // ADD
+            5'b00001: begin ALUOp=4'b0001; RegWrite=1; end // SUB
+            5'b00010: begin ALUOp=4'b0010; RegWrite=1; end // MUL
+            5'b00011: begin ALUOp=4'b0011; RegWrite=1; end // DIV
+            5'b00101: begin ALUOp=4'b0100; RegWrite=1; end // INC
+            5'b00110: begin ALUOp=4'b0101; RegWrite=1; end // DEC
+            5'b01000: begin ALUOp=4'b0110; RegWrite=1; end // AND
+            5'b01001: begin ALUOp=4'b0111; RegWrite=1; end // OR
+            5'b01010: begin ALUOp=4'b1000; RegWrite=1; end // XOR
+            5'b01011: begin ALUOp=4'b1001; RegWrite=1; end // NOT
+            default: ; // NOP
+        endcase
+    end
+endmodule
+

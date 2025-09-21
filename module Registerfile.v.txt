@@ -1,0 +1,41 @@
+// ==========================
+// Register File (16x16)
+// ==========================
+module RegisterFile (
+    input clk,
+    input [3:0] read_reg1, read_reg2, write_reg,
+    input [15:0] write_data,
+    input reg_write,
+    output reg [15:0] read_data1, read_data2
+);
+    reg [15:0] reg_mem [0:15];
+
+    initial begin
+     
+        reg_mem[0] = 16'd0;   // r0 usually hardwired to 0
+        reg_mem[1] = 16'd10;  // r1 = 10
+        reg_mem[2] = 16'd20;  // r2 = 20
+        reg_mem[3] = 16'd30;  // r3 = 30
+        reg_mem[4] = 16'd40;  // r4 = 40
+        reg_mem[5] = 16'd50;  // r5 = 50
+        // You can set the rest to 0
+        reg_mem[6] = 16'd0;
+        reg_mem[7] = 16'd0;
+        reg_mem[8] = 16'd0;
+        reg_mem[9] = 16'd0;
+        reg_mem[10] = 16'd0;
+        reg_mem[11] = 16'd0;
+        reg_mem[12] = 16'd0;
+        reg_mem[13] = 16'd0;
+        reg_mem[14] = 16'd0;
+        reg_mem[15] = 16'd0;
+    end
+
+    always @(posedge clk) begin
+        if (reg_write) reg_mem[write_reg] <= write_data;
+    end
+    always @(*) begin
+        read_data1 = reg_mem[read_reg1];
+        read_data2 = reg_mem[read_reg2];
+    end
+endmodule
